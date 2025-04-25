@@ -23,9 +23,17 @@ from django.http import HttpResponse
 from django.contrib.auth import views as auth_views
 
 from . import views
+from . import views_photometry
 
 urlpatterns = [
     path('', views.index, name='index'),
+
+    # Photometry
+    path(r'photometry/', views_photometry.photometry, name='photometry'),
+    path(r'photometry/lc', views_photometry.lc, {'mode': 'jpeg'}, name='photometry_lc'),
+    path(r'photometry/json', views_photometry.lc, {'mode': 'json'}, name='photometry_json'),
+    path(r'photometry/text', views_photometry.lc, {'mode': 'text'}, name='photometry_text'),
+    path(r'photometry/mjd', views_photometry.lc, {'mode': 'mjd'}, name='photometry_mjd'),
 
     # Auth
     path('login/', auth_views.LoginView.as_view(), name='login'),

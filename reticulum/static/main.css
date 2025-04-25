@@ -89,3 +89,14 @@
   font-style: italic;
   display: none;
 }
+
+/* input type='number' without spinner */
+.no-spinners {
+  -moz-appearance: textfield;
+}
+
+.no-spinners::-webkit-outer-spin-button,
+.no-spinners::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
