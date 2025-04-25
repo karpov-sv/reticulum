@@ -6,6 +6,9 @@ from tqdm.auto import tqdm
 
 import numpy as np
 from astropy.table import Table
+from astropy import units as u
+
+from mocpy import MOC
 
 from stdpipe.db import DB
 
@@ -29,13 +32,40 @@ if __name__ == '__main__':
     s = io.StringIO()
 
     for i,filename in enumerate(tqdm(files)):
+        dirname = os.path.split(filename)[0]
         obj = Table.read(filename)
 
-        seq_id = 0
+        moc = MOC.from_lonlat(
+            obj["ra"].T * u.deg,
+            obj["dec"].T * u.deg,
+            max_norder=10,
+        )
+
+        seq_id = db.query(
+            'INSERT INTO sequences (path, site, observer, filter, target, moc) '
+            'VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING RETURNING id',
+            (
+                dirname,
+                obj.meta['Telescope'],
+                obj.meta['Observer'],
+                obj.meta['Filter'],
+                obj.meta['Object'],
+                moc.to_string(),
+            ),
+            table=False,
+        )
+
+        if not seq_id:
+            # Sequence already exists
+            res = db.query('SELECT id,moc FROM sequences WHERE path = %s', (dirname,), table=False, simplify=False)
+            seq_id = int(res[0]['id'])
+            moc0 = MOC.from_string(res[0]['moc'])
+        else:
+            moc0 = None
 
         frame_id = db.query(
-            'INSERT INTO frames (sequence, time, filter, exposure, ra, dec, radius, pixscale, width, height) '
-            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id',
+            'INSERT INTO frames (sequence, time, filter, exposure, ra, dec, radius, pixscale, width, height, moc, keywords) '
+            'VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING RETURNING id',
             (
                 seq_id,
                 obj['time'][0].datetime,
@@ -53,27 +83,25 @@ if __name__ == '__main__':
                 )/3600,
                 obj.meta['Width'],
                 obj.meta['Depth'],
+                moc.to_string(),
+                obj.meta,
             ),
             table=False,
         )
 
-        # for row in obj:
-        #     print(
-        #         seq_id, frame_id, row['time'].datetime,
-        #         row['mag_filter_name'], row['ra'], row['dec'],
-        #         row['mag_calib'], row['mag_calib_err'],
-        #         row['mag_color_term'][0], row['mag_color_term'][1],
-        #         row['flags'], row['fwhm'],
-        #         sep='\t', end='\n', file=s
-        #     )
+        if frame_id:
+            Table({
+                'sequence':[seq_id]*len(obj), 'frame': [frame_id]*len(obj), 'time':obj['time'].datetime,
+                'filter': obj['mag_filter_name'], 'ra': obj['ra'], 'dec': obj['dec'],
+                'mag': obj['mag_calib'], 'magerr': obj['mag_calib_err'],
+                'color_term': obj['mag_color_term'][:,0], 'color_term2': obj['mag_color_term'][:,1],
+                'flags': obj['flags'], 'fwhm': obj['fwhm'],
+            }).write(s, format='ascii.no_header', delimiter='\t')
 
-        Table({
-            'sequence':[seq_id]*len(obj), 'frame': [frame_id]*len(obj), 'time':obj['time'].datetime,
-            'filter': obj['mag_filter_name'], 'ra': obj['ra'], 'dec': obj['dec'],
-            'mag': obj['mag_calib'], 'magerr': obj['mag_calib_err'],
-            'color_term': obj['mag_color_term'][:,0], 'color_term2': obj['mag_color_term'][:,1],
-            'flags': obj['flags'], 'fwhm': obj['fwhm'],
-        }).write(s, format='ascii.no_header', delimiter='\t')
+            # Now update MOC of the sequence
+            if moc0 is not None:
+                moc0 = moc0.union(moc)
+                db.query('UPDATE sequences SET moc = %s WHERE path = %s', (moc0.to_string(), dirname))
 
         columns = ['sequence', 'frame', 'time', 'filter', 'ra', 'dec', 'mag', 'magerr', 'color_term', 'color_term2', 'flags', 'fwhm']
 

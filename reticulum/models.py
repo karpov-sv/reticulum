@@ -9,10 +9,12 @@ from django.db import models
 
 
 class Sequences(models.Model):
+    path = models.TextField(unique=True, blank=True, null=True)
     site = models.TextField(blank=True, null=True)
     observer = models.TextField(blank=True, null=True)
     filter = models.TextField(blank=True, null=True)
-    object = models.TextField(blank=True, null=True)
+    target = models.TextField(blank=True, null=True)
+    moc = models.TextField(blank=True, null=True)
     keywords = models.JSONField(blank=True, null=True)
 
     class Meta:
@@ -31,12 +33,13 @@ class Frames(models.Model):
     pixscale = models.FloatField(blank=True, null=True)
     width = models.IntegerField(blank=True, null=True)
     height = models.IntegerField(blank=True, null=True)
-    # footprint skipped
+    moc = models.TextField(blank=True, null=True)
     keywords = models.JSONField(blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'frames'
+        unique_together = (('sequence', 'time'),)
 
 
 class Photometry(models.Model):

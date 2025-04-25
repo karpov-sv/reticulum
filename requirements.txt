@@ -8,3 +8,5 @@ celery
 django-celery-results
 redis
 humanize
+astropy_healpix
+mocpy

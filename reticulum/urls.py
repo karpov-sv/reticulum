@@ -35,6 +35,9 @@ urlpatterns = [
     path(r'photometry/text', views_photometry.lc, {'mode': 'text'}, name='photometry_text'),
     path(r'photometry/mjd', views_photometry.lc, {'mode': 'mjd'}, name='photometry_mjd'),
 
+    # Coverage
+    path(r'coverage/all', views.coverage, name='coverage_all'),
+
     # Auth
     path('login/', auth_views.LoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
