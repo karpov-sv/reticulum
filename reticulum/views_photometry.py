@@ -52,6 +52,10 @@ def get_lc(request):
         magerr = float(magerr)
         lc = lc.filter(magerr__lt=magerr)
 
+    filt = request.GET.get('filter')
+    if filt:
+        lc = lc.filter(filter=filt+'mag')
+
     ra = float(request.GET.get('ra'))
     dec = float(request.GET.get('dec'))
     sr = float(request.GET.get('sr', 0.01))
@@ -265,6 +269,7 @@ def photometry(request):
             target_name = form.cleaned_data.get('target')
             sr = form.cleaned_data.get('sr')
             bv = form.cleaned_data.get('bv')
+            filt = form.cleaned_data.get('filter')
 
             target = resolve.resolve(target_name)
 
@@ -277,14 +282,6 @@ def photometry(request):
                 context['target'] = target
                 context['sr'] = sr
                 context['bv'] = bv
-
-                params = {
-                    'name': target_name,
-                    'ra': target.ra.deg,
-                    'dec': target.dec.deg,
-                    'sr': sr,
-                    'bv': bv,
-                }
-
+                context['filter'] = filt
 
     return TemplateResponse(request, 'photometry.html', context=context)

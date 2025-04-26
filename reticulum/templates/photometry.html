@@ -22,7 +22,7 @@
      };
 
      $(document).ready(function() {
-       Plotly.d3.json('{% url 'photometry_json' %}{% urlparams name=target_name ra=target.ra.deg dec=target.dec.deg sr=sr bv=bv %}', function(error, data){
+       Plotly.d3.json('{% url 'photometry_json' %}{% urlparams name=target_name ra=target.ra.deg dec=target.dec.deg sr=sr bv=bv filter=filter %}', function(error, data){
          if (error) {
            $('#lcDiv').text("Error loading plot");
 
@@ -151,7 +151,12 @@
        showSimbadPointerControl: true,
        showCooGrid: false,
      });
-     aladin.setImageSurvey("P/PanSTARRS/DR1/color/z/zg/g");
+     aladin.setImageSurvey("CDS/P/PanSTARRS/DR1/color-z-zg-g");
+
+     /* var syn = A.catalogHiPS('https://hipscat.cds.unistra.fr/HiPSCatService/I/360/syntphot/', {onClick: 'showTable', name: 'Gaia DR3 syntphot'});
+        syn.hide();
+        aladin.addCatalog(syn); */
+
      var moc = A.MOCFromURL('{% url 'coverage_all' %}', {
        color: 'red',
        lineWidth: 3,
