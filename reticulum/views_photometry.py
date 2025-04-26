@@ -102,9 +102,19 @@ def lc(request, mode="jpg", size=800):
     color_terms = np.array([_.color_term for _ in lc])
     color_terms2 = np.array([_.color_term2 for _ in lc])
 
+    seq_ids = np.array([_.sequence.id for _ in lc])
+    sites = np.array([_.sequence.site for _ in lc])
+    observers = np.array([_.sequence.observer for _ in lc])
+    ofilters = np.array([_.frame.filter for _ in lc])
+    exposures = np.array([_.frame.exposure for _ in lc])
+
     mjds = Time(times).mjd if len(times) else []
 
-    bv = get_bv(mags, magerrs, filters, color_terms, color_terms2)
+    bv = request.GET.get('bv')
+    if bv is not None:
+        bv = float(bv)
+    else:
+        bv = get_bv(mags, magerrs, filters, color_terms, color_terms2)
 
     mags += color_terms * bv
     mags += color_terms2 * bv**2
@@ -112,11 +122,11 @@ def lc(request, mode="jpg", size=800):
     cols = np.array([{
         'Bmag':'blue',
         'Vmag':'green',
-        'Rmag':'red',
+        'Rmag':'crimson',
         'Imag':'orange',
-        'gmag':'green',
-        'rmag':'red',
-        'imag':'orange',
+        'gmag':'darkslategray',
+        'rmag':'darkred',
+        'imag':'darkorange',
         'zmag':'magenta',
     }.get(_, 'black') for _ in filters])
 
@@ -179,19 +189,26 @@ def lc(request, mode="jpg", size=800):
         lcs = []
 
         for fn in np.unique(filters):
-            idx = idx0 & (filters == fn)
-            idx &= np.isfinite(mags)
-            idx &= np.isfinite(fwhms)
+            idx1 = idx0 & (filters == fn)
 
-            if len(mags[idx]) < 2:
-                continue
+            for sid in np.unique(seq_ids[idx1]):
+                idx = idx1 & (seq_ids == sid)
+                idx &= np.isfinite(mags)
+                idx &= np.isfinite(fwhms)
 
-            times_idx = [_.isoformat() for _ in times[idx]]
+                if len(mags[idx]) < 2:
+                    continue
 
-            lcs.append({'filter': fn, 'color': cols[idx][0],
-                        'time': times_idx, 'mjd': list(mjds[idx]), 'xi': list(xi[idx]), 'eta': list(eta[idx]),
-                        'mag': list(mags[idx]), 'magerr': list(magerrs[idx]), 'flags': list(flags[idx]),
-                        'fwhm': list(fwhms[idx]), 'color_term': list(color_terms[idx]), 'color_term2': list(color_terms2[idx])})
+                times_idx = [_.isoformat() for _ in times[idx]]
+
+                lcs.append({
+                    'filter': fn.replace('mag', ''), 'sid': sid, 'color': cols[idx][0],
+                    'time': times_idx, 'mjd': list(mjds[idx]), 'xi': list(xi[idx]), 'eta': list(eta[idx]),
+                    'mag': list(mags[idx]), 'magerr': list(magerrs[idx]), 'flags': list(flags[idx]),
+                    'fwhm': list(fwhms[idx]), 'color_term': list(color_terms[idx]), 'color_term2': list(color_terms2[idx]),
+                    'site': list(sites[idx]), 'observer': list(observers[idx]),
+                    'ofilter': list(ofilters[idx]), 'exposure': list(exposures[idx]),
+                })
 
         data = {'name': name, 'title': title, 'ra': ra, 'dec': dec, 'sr': sr, 'bv': bv, 'lcs': lcs}
 
@@ -209,30 +226,30 @@ def lc(request, mode="jpg", size=800):
 
         return response
 
-    elif mode == 'mjd':
-        response = HttpResponse(request, content_type='text/plain')
+    # elif mode == 'mjd':
+    #     response = HttpResponse(request, content_type='text/plain')
 
-        response['Content-Disposition'] = 'attachment; filename=lc_mjd_%s_%s_%s.txt' % (ra, dec, sr)
+    #     response['Content-Disposition'] = 'attachment; filename=lc_mjd_%s_%s_%s.txt' % (ra, dec, sr)
 
-        if len(np.unique(filters)) == 1:
-            single = True
-        else:
-            single = False
+    #     if len(np.unique(filters)) == 1:
+    #         single = True
+    #     else:
+    #         single = False
 
-        if single:
-            print('# MJD Mag Magerr', file=response)
-        else:
-            print('# MJD Mag Magerr Filter', file=response)
+    #     if single:
+    #         print('# MJD Mag Magerr', file=response)
+    #     else:
+    #         print('# MJD Mag Magerr Filter', file=response)
 
-        idx = idx0
+    #     idx = idx0
 
-        for _ in xrange(len(times[idx])):
-            if single:
-                print(mjds[idx][_], mags[idx][_], magerrs[idx][_], file=response)
-            else:
-                print(mjds[idx][_], mags[idx][_], magerrs[idx][_], filters[idx][_], file=response)
+    #     for _ in xrange(len(times[idx])):
+    #         if single:
+    #             print(mjds[idx][_], mags[idx][_], magerrs[idx][_], file=response)
+    #         else:
+    #             print(mjds[idx][_], mags[idx][_], magerrs[idx][_], filters[idx][_], file=response)
 
-        return response
+    #     return response
 
 
 def photometry(request):
@@ -247,6 +264,7 @@ def photometry(request):
         if form.is_valid():
             target_name = form.cleaned_data.get('target')
             sr = form.cleaned_data.get('sr')
+            bv = form.cleaned_data.get('bv')
 
             target = resolve.resolve(target_name)
 
@@ -258,15 +276,15 @@ def photometry(request):
                 context['target_name'] = target_name
                 context['target'] = target
                 context['sr'] = sr
+                context['bv'] = bv
 
                 params = {
                     'name': target_name,
                     'ra': target.ra.deg,
                     'dec': target.dec.deg,
                     'sr': sr,
+                    'bv': bv,
                 }
-
-                context['lc_json'] = reverse('photometry_json') + '?' + urlencode(params)
 
 
     return TemplateResponse(request, 'photometry.html', context=context)

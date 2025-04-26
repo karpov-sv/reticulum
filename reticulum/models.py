@@ -23,7 +23,7 @@ class Sequences(models.Model):
 
 
 class Frames(models.Model):
-    sequence = models.IntegerField(blank=True, null=True)
+    sequence = models.ForeignKey(Sequences, on_delete=models.DO_NOTHING, db_column='sequence', blank=True, null=True)
     time = models.DateTimeField(blank=True, null=True)
     filter = models.TextField(blank=True, null=True)
     exposure = models.FloatField(blank=True, null=True)
@@ -43,8 +43,8 @@ class Frames(models.Model):
 
 
 class Photometry(models.Model):
-    sequence = models.IntegerField(blank=True, null=True)
-    frame = models.IntegerField(blank=True, null=True)
+    sequence = models.ForeignKey(Sequences, on_delete=models.DO_NOTHING, db_column='sequence', blank=True, null=True)
+    frame = models.ForeignKey(Frames, on_delete=models.DO_NOTHING, db_column='frame', blank=True, null=True)
     time = models.DateTimeField(blank=True, null=True)
     filter = models.TextField(blank=True, null=True)
     ra = models.FloatField(blank=True, null=True)
