@@ -9,6 +9,8 @@ import os
 import uuid
 import re
 
+from urllib.parse import urlencode
+
 from functools import partial
 
 from astropy.io import fits
@@ -49,3 +51,12 @@ class MakeListNode(template.Node):
 def free_disk_space():
     s = os.statvfs(settings.TASKS_PATH)
     return s.f_bavail*s.f_frsize
+
+
+@register.simple_tag
+def urlparams(*_, **kwargs):
+    safe_args = {k: v for k, v in kwargs.items() if v is not None}
+    if safe_args:
+        return mark_safe('?{}'.format(urlencode(safe_args)))
+
+    return ''

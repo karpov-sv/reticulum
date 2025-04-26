@@ -2,6 +2,7 @@
 
 {% load crispy_forms_tags %}
 {% load filters %}
+{% load tags %}
 
 {# JavaScript #}
 
@@ -21,8 +22,7 @@
      };
 
      $(document).ready(function() {
-       /* $('#lcDiv').html("Loading..."); */
-       Plotly.d3.json('{{ lc_json|safe }}', function(error, data){
+       Plotly.d3.json('{% url 'photometry_json' %}{% urlparams name=target_name ra=target.ra.deg dec=target.dec.deg sr=sr %}', function(error, data){
          if (error) {
            $('#lcDiv').text("Error loading plot");
 
