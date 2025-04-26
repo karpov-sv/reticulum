@@ -33,6 +33,13 @@ def coverage(request, seq_id=None, frame_id=None):
             moc0 = moc0.union(moc)
 
     if moc0 is not None:
-        return HttpResponse(moc0.to_string(), content_type='text/plain')
+        s = io.BytesIO()
+        hdus = moc0.serialize(format='fits')
+        hdus.writeto(s)
+
+        response = HttpResponse(s.getvalue(), content_type='application/octet-stream')
+        # response['Content-Disposition'] = 'attachment; filename=' + os.path.split(filename)[-1] + '.processed.fits'
+        response['Content-Length'] = len(s.getvalue())
+        return response
 
     return HttpResponse('coverage', content_type='text/plain')

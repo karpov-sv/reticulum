@@ -118,7 +118,39 @@
       <a href="http://aladin.u-strasbg.fr/AladinLite/?target={{ target.ra.deg }}%20{{ target.dec.deg }}&fov=0.40&survey=P%2FDSS2%2Fcolor" title="Aladin Lite" target="_blank">Aladin</a>
     </div>
 
-
   {% endif %}
+
+  <!-- Aladin -->
+  <div id="aladin-lite-div" style="width: 100%; height: 800px"></div>
+  <script type="text/javascript" src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
+
+  <script type="text/javascript">
+   let aladin;
+   A.init.then(() => {
+     aladin = A.aladin('#aladin-lite-div', {
+       {% if target %} fov: 0.05, target: '{{ target.ra.deg }} {{ target.dec.deg }}', {% else %} fov: 60, {% endif %}
+       projection: "AIT",
+       cooFrame: 'equatorial',
+       showCooGridControl: true,
+       showSimbadPointerControl: true,
+       showCooGrid: false,
+     });
+     aladin.setImageSurvey("P/PanSTARRS/DR1/color/z/zg/g");
+     var moc = A.MOCFromURL('{% url 'coverage_all' %}', {
+       color: 'red',
+       lineWidth: 3,
+       perimeter: true,
+       /* fillColor: "#8040f0",
+          fill: true,
+          opacity: 0.3, */
+     });
+     aladin.addMOC(moc);
+
+     aladin.on("positionChanged", ({ra, dec}) => {
+       $('#id_target').val(ra.toFixed(4) + ' ' + dec.toFixed(4));
+     });
+
+   });
+  </script>
 
 {% endblock %}

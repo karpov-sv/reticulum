@@ -180,6 +180,8 @@ def lc(request, mode="jpg", size=800):
 
         for fn in np.unique(filters):
             idx = idx0 & (filters == fn)
+            idx &= np.isfinite(mags)
+            idx &= np.isfinite(fwhms)
 
             if len(mags[idx]) < 2:
                 continue
